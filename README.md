@@ -57,7 +57,8 @@ Não entram nos scripts: `dotacao-orcamentaria-e-credito-empenhado-da-dpf-por-fo
 `emissoes-diretas-de-titulos-da-dpmfi.xlsx`, `estoque-da-divida-publica-federal.csv` (cópia do xlsx),
 `CRONOGRAMA_20261106_RM_D.CSV` (veio vazio), `nivel-adequado-das-reservas-internacionais.xlsx`,
 `bcdata.sgs.22864.csv`, `bcdata.sgs.3692.csv`, `bcdata.sgs.5723.csv`,
-`bcdata.sgs.432.csv` e `(1)` (só 2023), `bcdata.sgs.13762 (1).csv` (duplicado), `seriehistoricajul26.xlsx`.
+`bcdata.sgs.432.csv` e `(1)` (só 2023), `bcdata.sgs.13762 (1).csv` (duplicado), `seriehistoricajul26.xlsx`,
+`Série de estatísticas (4).xls` e `(5).xls` (IPCA esperado na base de 5 dias úteis; a de 30 dias é a usada).
 
 ## Scripts
 
