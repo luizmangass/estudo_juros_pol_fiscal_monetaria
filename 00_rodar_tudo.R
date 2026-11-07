@@ -2,6 +2,7 @@
 # Estudo_Juros: roda todas as análises em ordem
 #
 # Abra este arquivo no RStudio e rode tudo (Ctrl+Shift+Enter).
+# Passo a passo completo, com o significado de cada saída: GUIA.md.
 # Os gráficos vão para graficos/ e as bases geradas para resultados/.
 #
 # Pacotes:
@@ -27,8 +28,9 @@ scripts <- c(
   "robustez_surpresas_5d.R",   # mesmo teste com Focus de 5 dias úteis (2021+)
   "ancora_fiscal.R",           # postura monetária x impulso fiscal x desancoragem
   "composicao_divida.R",       # o que move LFT/prefixados; ciclos de corte Tombini, Ilan, Campos Neto
-  "duration_divida.R",         # duration, convexidade e DV01 da dívida, título a título
-  "estimar_modelo.R"           # estima as equações do modelo (pré e pós-2014)
+  "duration_divida.R",         # composição e duration a preço de mercado, DV01, choque de curva
+  "estimar_modelo.R",          # estima as equações do modelo (pré e pós-2014)
+  "reacao_mercado_estocastica.R" # canetada -> composição, marcação e custo (usa as simulações do Dynare)
 )
 
 for (s in scripts) {
@@ -48,10 +50,12 @@ gerados <- c("composicao_indexador.csv", "estoque_dpf_longo.csv",
              "parametros_estimados.csv", "base_modelo_trimestral.csv",
              "juro_neutro_5a5a.csv", "surpresas_5d_vs_30d.csv", "robustez_5d_lp.csv",
              "regressao_composicao.csv", "evento_ciclos_corte.csv", "base_composicao_mensal.csv",
-             "duration_mensal.csv", "duration_por_titulo_ultimo_mes.csv", "choque_curva_marcacao.csv")
+             "duration_mensal.csv", "perfil_titulos_ultimo_mes.csv", "choque_curva_marcacao.csv",
+             "composicao_mercado_mensal.csv", "reacao_mercado_resumo.csv",
+             "reacao_mercado_trajetorias.csv")
 for (f in intersect(gerados, list.files()))
   file.copy(f, file.path(raiz, "resultados", f), overwrite = TRUE)
 if (file.exists("Rplots.pdf")) file.remove("Rplots.pdf")
 
 message("\nPronto. Gráficos em graficos/ e bases em resultados/.")
-message("O modelo (Dynare) roda à parte: ver scripts/modelo/.")
+message("O modelo (Dynare) roda à parte: ver scripts/modelo/ e GUIA.md.")

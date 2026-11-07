@@ -16,7 +16,8 @@
 % mercado precisa acreditar que virá.
 %
 % Requer Dynare no MATLAB ou Octave (no Octave: pkg load statistics).
-% Saídas: resultados_modelo_estimado.csv, calibracao_chi_r.csv, irf_risco_modelo.csv
+% Saídas: resultados_modelo_estimado.csv, calibracao_chi_r.csv, irf_risco_modelo.csv,
+%         simulacoes_modelo_estimado.csv (cada trajetória; sim = 0 é a central)
 % =====================================================================
 cortes = [1 2];  H = 4;  T = 24;  N = 1000;
 vars   = {'i','il','tp','rp','pi','q','b','ief','y'};
@@ -25,6 +26,10 @@ vars   = {'i','il','tp','rp','pi','q','b','ief','y'};
 alvo   = {[0.39 0.37], [1.37 1.24]};
 grade  = 0:0.05:4;
 saida  = {};  calib = {};  irfs = {};
+% Trajetórias individuais (para o modelo satélite da dívida em R)
+vars_sim = {'i','il','pi','rp','s','b'};
+fsim = fopen('simulacoes_modelo_estimado.csv', 'w');
+fprintf(fsim, 'regime,corte,sim,trimestre,%s\n', strjoin(vars_sim, ','));
 
 for regime = [1 2]
   eval(sprintf('dynare modelo_estimado -DREGIME=%d noclearall nolog', regime));
@@ -97,6 +102,15 @@ for regime = [1 2]
       if n == 0, det = Y; sims = zeros(size(Y,1), T, N); else, sims(:,:,n) = Y; end
     end
     nomes2 = [nomes; {'cambio_nominal'}];
+    jj = cellfun(@(v) find(strcmp(nomes2, v)), vars_sim);
+    for n = 0:N
+      if n == 0, Ysim = det; else, Ysim = sims(:, :, n); end
+      for t = 1:T
+        fprintf(fsim, '%d,%d,%d,%d', regime, k, n, t);
+        fprintf(fsim, ',%.5f', Ysim(jj, t));
+        fprintf(fsim, '\n');
+      end
+    end
     for v = [vars, {'cambio_nominal'}]
       j = find(strcmp(nomes2, v{1}));
       pr = prctile(squeeze(sims(j,:,:))', [10 50 90]);
@@ -107,6 +121,7 @@ for regime = [1 2]
   end
 end
 
+fclose(fsim);
 fid = fopen('resultados_modelo_estimado.csv', 'w');
 fprintf(fid, 'regime,corte,trimestre,variavel,deterministico,p10,p50,p90\n');
 for r = 1:size(saida,1), fprintf(fid, '%d,%d,%d,%s,%.6f,%.6f,%.6f,%.6f\n', saida{r,:}); end

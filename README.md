@@ -7,8 +7,10 @@ por que a política monetária é refém, ou passageira, da política fiscal".
 
 ## Como rodar
 
+**Passo a passo completo, com o significado de cada gráfico e base, a sequência lógica do estudo e um roteiro para artigo e fio: [GUIA.md](GUIA.md).**
+
 1. Instale os pacotes (lista no topo de `00_rodar_tudo.R`).
-2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 11 scripts em ordem,
+2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 12 scripts em ordem,
    joga os gráficos em `graficos/` e as bases geradas em `resultados/`.
 3. Para ver a transformação passo a passo, abra um script de `scripts/`, faça
    `setwd(".../estudo_juros_pol_fiscal_monetaria/dados")` e rode bloco a bloco (os `View()` mostram cada etapa).
@@ -25,7 +27,7 @@ emendado que `ancora_fiscal.R` usa.
 | Arquivo em dados/ | O que é | Fonte | Usado em |
 | --- | --- | --- | --- |
 | estoque-da-divida-publica-federal.xlsx | Estoque da DPF por título, RMD Anexo 2.1 | Tesouro Nacional | divida_publica.R |
-| estoquedpf.csv | Estoque da DPF por título e vencimento, mensal (09/2017+) | Tesouro Transparente | duration_divida.R |
+| estoquedpf.csv | Estoque da DPF por título e vencimento, mensal (09/2017+) | Tesouro Transparente | duration_divida.R, reacao_mercado_estocastica.R |
 | fatores-de-variacao-da-divida-publica-federal.xlsx | Fatores de variação da DPF, RMD Anexo 2.9 | Tesouro Nacional | divida_publica.R, custo_primario_nominal.R |
 | precotaxatesourodireto.csv | Taxas e preços diários do Tesouro Direto (inclui o juro neutro de mercado, forward 5a5a das NTN-B) | Tesouro Transparente | lft_regressao.R, ancora_fiscal.R, estimar_modelo.R, composicao_divida.R |
 | receita-orcamentaria-da-uniao.csv | Receita orçamentária da União (linha de refinanciamento) | Tesouro Transparente | custo_primario_nominal.R |
@@ -74,7 +76,8 @@ Não entram nos scripts: `dotacao-orcamentaria-e-credito-empenhado-da-dpf-por-fo
 | robustez_surpresas_5d.R | Refaz o teste com a mediana Focus de 5 dias úteis | 20 |
 | ancora_fiscal.R | Postura monetária, impulso fiscal estrutural e desancoragem | 16 |
 | composicao_divida.R | O que move LFT, prefixados e IPCA; ciclos de corte Tombini, Ilan e Campos Neto | 21, 22 |
-| duration_divida.R | Duration, convexidade, DV01 e perda de marcação a mercado num choque de curva | 23, 24 |
+| duration_divida.R | Composição e duration a preço de mercado, convexidade, DV01 e perda de marcação num choque de curva | 23 a 25 |
+| reacao_mercado_estocastica.R | Liga as 1.000 simulações do modelo à regressão da composição, à duration e ao perfil de vencimentos: composição, marcação e custo extra para o Tesouro numa canetada | 26 a 28 |
 | estimar_modelo.R | Estima as equações do modelo pré e pós-2014 | resultados/parametros_estimados.csv |
 | modelo/ (estimado) | Modelo com parâmetros estimados e risco calibrado pelas surpresas | 17 a 19 |
 | modelo/ (ilustrativo) | Primeira versão, calibrada à mão | 07, 08 |
