@@ -1,0 +1,10 @@
+.Rhistory
+.RData
+.Rproj.user/
+Rplots.pdf
+*.log
+# Arquivos gerados pelo Dynare
+scripts/modelo/+*/
+scripts/modelo/modelo_*/
+scripts/modelo/*_results.mat
+scripts/modelo/*.jnl
