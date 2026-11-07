@@ -28,9 +28,11 @@ scripts <- c(
   "robustez_surpresas_5d.R",   # mesmo teste com Focus de 5 dias úteis (2021+)
   "ancora_fiscal.R",           # postura monetária x impulso fiscal x desancoragem
   "composicao_divida.R",       # o que move LFT/prefixados; ciclos de corte Tombini, Ilan, Campos Neto
+  "composicao_ardl.R",         # composição como série temporal: ARDL em log(LFT/pré) e log(IPCA/pré)
   "duration_divida.R",         # composição e duration a preço de mercado, DV01, choque de curva
   "estimar_modelo.R",          # estima as equações do modelo (pré e pós-2014)
-  "reacao_mercado_estocastica.R" # canetada -> composição, marcação e custo (usa as simulações do Dynare)
+  "reacao_mercado_estocastica.R", # canetada -> composição, marcação e custo (usa as simulações do Dynare)
+  "bvar_canetada.R"            # contraprova: a mesma canetada num VAR bayesiano
 )
 
 for (s in scripts) {
@@ -52,7 +54,9 @@ gerados <- c("composicao_indexador.csv", "estoque_dpf_longo.csv",
              "regressao_composicao.csv", "evento_ciclos_corte.csv", "base_composicao_mensal.csv",
              "duration_mensal.csv", "perfil_titulos_ultimo_mes.csv", "choque_curva_marcacao.csv",
              "composicao_mercado_mensal.csv", "reacao_mercado_resumo.csv",
-             "reacao_mercado_trajetorias.csv")
+             "reacao_mercado_trajetorias.csv", "ardl_selecao.csv", "ardl_coeficientes.csv",
+             "ardl_multiplicadores.csv", "bvar_canetada.csv", "bvar_vs_dynare.csv",
+             "bvar_composicao.csv")
 for (f in intersect(gerados, list.files()))
   file.copy(f, file.path(raiz, "resultados", f), overwrite = TRUE)
 if (file.exists("Rplots.pdf")) file.remove("Rplots.pdf")

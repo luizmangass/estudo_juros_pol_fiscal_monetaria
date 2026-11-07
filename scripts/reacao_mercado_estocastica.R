@@ -4,11 +4,14 @@
 # Liga as 1.000 simulações do modelo estimado (rodar_modelo_estimado.m)
 # a três coisas que o modelo macro não tem:
 #
-#   A. Composição: a regressão de composicao_divida.R diz quanto a
-#      participação de LFT, prefixados e IPCA muda em 12 meses quando
-#      risco, juro real, desancoragem, inclinação e primário estrutural
-#      mudam 1 desvio-padrão. Aplico esses coeficientes às trajetórias
-#      simuladas, trimestre a trimestre.
+#   A. Composição: o ARDL trimestral de composicao_ardl.R, em razões
+#      logarítmicas (LFT/pré e IPCA/pré), com dinâmica própria e com
+#      risco, juro real, desancoragem, primário estrutural, inclinação e
+#      câmbio como exógenas. Em cada simulação: (i) os coeficientes são
+#      sorteados da distribuição estimada (Newey-West), descartando os
+#      sorteios instáveis; (ii) soma-se um resíduo sorteado dos resíduos
+#      históricos, aos pares (as duas equações têm resíduos correlacionados).
+#      A simulação 0 é a central: coeficientes estimados, sem resíduo.
 #   B. Marcação a mercado: o perfil título a título de duration_divida.R
 #      (duration modificada e convexidade, a preço de mercado) aplicado
 #      ao choque simulado nos juros longos prefixado e real.
@@ -17,18 +20,18 @@
 #      nova (perfil de vencimentos). Resultado em R$ bilhões acumulados.
 #
 # Correspondência entre o modelo (desvios do estado estacionário) e as
-# variáveis da regressão:
+# variáveis do ARDL:
 #   risco      = rp x 100 (p.p. -> pontos-base)
 #   juro_real  = i - média de pi nos 4 trimestres seguintes (ex-ante)
 #   desanc     = média de pi nos 4 trimestres seguintes (expectativa 12m)
-#   inclinacao = il - i (pre 5 anos - Selic)
 #   estrutural = 4 x s (primário trimestral -> anual, % do PIB)
-#   vol_pre5   = não existe no modelo, fica em zero
+#   inclinacao = il - i (pré 5 anos - Selic)
+#   dep        = câmbio nominal hoje - câmbio nominal 4 trimestres antes (%)
 #   juro longo real = il - média de pi nos 20 trimestres seguintes
 #
-# Entradas (dados/): base_composicao_mensal.csv, regressao_composicao.csv,
-#   perfil_titulos_ultimo_mes.csv (gerados antes) e
-#   scripts/modelo/simulacoes_modelo_estimado.csv (Octave/Dynare)
+# Entradas (dados/): ardl_coeficientes.csv, ardl_vcov.csv, ardl_residuos.csv,
+#   ardl_ponto_partida.csv (composicao_ardl.R), perfil_titulos_ultimo_mes.csv
+#   (duration_divida.R) e scripts/modelo/simulacoes_modelo_estimado.csv
 # Saídas: reacao_mercado_resumo.csv, reacao_mercado_trajetorias.csv,
 #   26_composicao_estocastica.png, 27_custo_tesouro_estocastico.png,
 #   28_marcacao_estocastica.png
@@ -41,24 +44,13 @@ arq_sim <- arq_sim[file.exists(arq_sim)][1]
 if (is.na(arq_sim)) stop("Rode antes scripts/modelo/rodar_modelo_estimado.m (Octave/Dynare).")
 
 sim <- read_csv(arq_sim, show_col_types = FALSE)
+if (!"cambio_nominal" %in% names(sim))
+  stop("simulacoes_modelo_estimado.csv sem câmbio: rode de novo rodar_modelo_estimado.m.")
 regimes <- c("Pré-2014 (estimado)", "Pós-2014 (estimado)")
 cores   <- c("#2E86C1", "#C0392B")
+set.seed(2026)
 
-# ---- 1. Desvios-padrão da amostra da regressão ---------------------------
-base <- read_csv2("base_composicao_mensal.csv", show_col_types = FALSE) |>
-  mutate(mes = as.Date(mes)) |> arrange(mes) |>
-  mutate(d12 = lead(LFT, 12) - LFT) |>
-  filter(!is.na(d12), !is.na(risco), !is.na(vol_pre5), !is.na(desanc), !is.na(estrutural))
-dp <- c(risco = sd(base$risco), juro_real = sd(base$juro_real, na.rm = TRUE),
-        desanc = sd(base$desanc), inclinacao = sd(base$inclinacao, na.rm = TRUE),
-        estrutural = sd(base$estrutural))
-cat("\nDesvios-padrão usados para padronizar:\n"); print(round(dp, 2))
-
-beta <- read_csv2("regressao_composicao.csv", show_col_types = FALSE) |>
-  select(titulo, variavel, coef) |>
-  pivot_wider(names_from = variavel, values_from = coef)
-
-# ---- 2. Trajetórias das variáveis de mercado ------------------------------
+# ---- 1. Trajetórias das variáveis de mercado ------------------------------
 media_frente <- function(x, k) sapply(seq_along(x), function(t) {
   j <- (t + 1):min(t + k, length(x)); if (t == length(x)) x[t] else mean(x[j]) })
 
@@ -68,37 +60,76 @@ traj <- sim |>
          pi_e20 = media_frente(pi, 20),
          risco = 100 * rp, juro_real = i - pi_e4, desanc = pi_e4,
          inclinacao = il - i, estrutural = 4 * s,
+         dep = cambio_nominal - lag(cambio_nominal, 4, default = 0),
          real_longo = il - pi_e20) |>
   ungroup()
 
-# ---- A. Composição: coeficientes da regressão nas trajetórias -------------
-# A regressão é d12(part) = soma(beta x z). Por trimestre, a participação
-# anda 1/4 disso; a mudança acumulada é a soma ao longo da trajetória.
-zs <- traj |>
-  mutate(z_risco = risco / dp["risco"], z_juro_real = juro_real / dp["juro_real"],
-         z_desanc = desanc / dp["desanc"], z_incl = inclinacao / dp["inclinacao"],
-         z_estrut = estrutural / dp["estrutural"], z_vol = 0)
-for (k in c("LFT", "PRE", "IPCA")) {
-  cf <- beta |> filter(titulo == k)
-  zs[[paste0("d_", k)]] <- with(zs, cf$z_risco * z_risco + cf$z_juro_real * z_juro_real +
-                                  cf$z_desanc * z_desanc + cf$z_incl * z_incl +
-                                  cf$z_estrut * z_estrut + cf$z_vol * z_vol) / 4
-}
-# As três regressões são estimadas separadamente e não somam zero. Imponho
-# a soma: o que sobra é redistribuído pelo peso de cada indexador hoje
-# (câmbio e demais ficam constantes).
-peso <- read_csv2("composicao_mercado_mensal.csv", show_col_types = FALSE) |>
-  filter(mes == max(mes)) |>
-  mutate(k = recode(indexador, "Selic (LFT)" = "LFT", "Prefixado" = "PRE",
-                    "Índice de preços" = "IPCA")) |>
-  filter(k %in% c("LFT", "PRE", "IPCA"))
-w <- setNames(peso$part_mercado / sum(peso$part_mercado), peso$k)
-cat("\nPesos para a soma zero:\n"); print(round(w, 3))
-sobra <- zs$d_LFT + zs$d_PRE + zs$d_IPCA
-for (k in c("LFT", "PRE", "IPCA")) zs[[paste0("d_", k)]] <- zs[[paste0("d_", k)]] - w[k] * sobra
+# ---- A. Composição: ARDL com sorteio de parâmetros e de resíduos ----------
+xs <- c("risco", "juro_real", "desanc", "estrutural", "inclinacao", "dep")
+coefs <- read_csv2("ardl_coeficientes.csv", show_col_types = FALSE)
+vc    <- read_csv2("ardl_vcov.csv", show_col_types = FALSE)
+res   <- as.matrix(read_csv2("ardl_residuos.csv", show_col_types = FALSE)[, c("e1", "e2")])
+p0    <- read_csv2("ardl_ponto_partida.csv", show_col_types = FALSE)
+y0 <- c(p0$y1, p0$y2); total3 <- p0$LFT + p0$PRE + p0$IPCA
+p  <- max(c(0, as.integer(sub("dy[12]_", "", grep("^dy[12]_", coefs$termo, value = TRUE)))))
+cat(sprintf("\nARDL(%d); ponto de partida %s: LFT %.1f%%, pré %.1f%%, IPCA %.1f%%\n",
+            p, format(p0$tri), p0$LFT, p0$PRE, p0$IPCA))
 
-zs <- zs |> group_by(regime, corte, sim) |> arrange(trimestre, .by_group = TRUE) |>
-  mutate(across(c(d_LFT, d_PRE, d_IPCA), cumsum, .names = "part_{.col}")) |> ungroup()
+cf_hat <- lapply(c("dy1", "dy2"), function(e) { x <- coefs |> filter(eq == e); setNames(x$coef, x$termo) })
+V <- lapply(c("dy1", "dy2"), function(e) {
+  x <- vc |> filter(eq == e) |> select(-eq) |> pivot_wider(names_from = termo2, values_from = v)
+  m <- as.matrix(x[, -1]); rownames(m) <- x$termo1; m[names(cf_hat[[1]]), names(cf_hat[[1]])] })
+
+raiz_max <- function(cf1, cf2, p) {
+  n <- 2 + 2 * max(p, 1); A <- matrix(0, n, n)
+  for (k in 1:2) {
+    cf <- if (k == 1) cf1 else cf2
+    A[2 + k, 1:2] <- cf[c("l_y1", "l_y2")]
+    for (j in seq_len(p)) A[2 + k, 2 + 2 * (j - 1) + 1:2] <- cf[c(paste0("dy1_", j), paste0("dy2_", j))]
+  }
+  A[1, ] <- A[3, ]; A[1, 1] <- A[1, 1] + 1
+  A[2, ] <- A[4, ]; A[2, 2] <- A[2, 2] + 1
+  if (p > 1) for (j in 2:p) { A[2 + 2 * (j - 1) + 1, 2 + 2 * (j - 2) + 1] <- 1
+                              A[2 + 2 * (j - 1) + 2, 2 + 2 * (j - 2) + 2] <- 1 }
+  max(Mod(eigen(A)$values))
+}
+simula_ardl <- function(xdev, cf1, cf2, p, eps = NULL) {
+  Tn <- nrow(xdev); y <- matrix(0, Tn + 1, 2); dy <- matrix(0, Tn + p + 1, 2)
+  for (t in 1:Tn) {
+    xl <- if (t > 1) xdev[t - 1, ] else rep(0, ncol(xdev))   # x entra defasado
+    for (k in 1:2) {
+      cf <- if (k == 1) cf1 else cf2
+      ar <- if (p == 0) 0 else
+        sum(cf[paste0("dy1_", 1:p)] * dy[t + p - (1:p), 1]) +
+        sum(cf[paste0("dy2_", 1:p)] * dy[t + p - (1:p), 2])
+      dy[t + p, k] <- cf["l_y1"] * y[t, 1] + cf["l_y2"] * y[t, 2] + ar +
+        sum(cf[paste0("l_", xs)] * xl) + (if (is.null(eps)) 0 else eps[t, k])
+    }
+    y[t + 1, ] <- y[t, ] + dy[t + p, ]
+  }
+  y[-1, , drop = FALSE]
+}
+para_fatias <- function(ydev, y0, total) {
+  y1 <- y0[1] + ydev[, 1]; y2 <- y0[2] + ydev[, 2]
+  den <- 1 + exp(y1) + exp(y2); den0 <- 1 + exp(y0[1]) + exp(y0[2])
+  cbind(LFT = total * (exp(y1) / den - exp(y0[1]) / den0),
+        PRE = total * (1 / den - 1 / den0),
+        IPCA = total * (exp(y2) / den - exp(y0[2]) / den0))
+}
+sorteia <- function() repeat {
+  c1 <- MASS::mvrnorm(1, cf_hat[[1]], V[[1]]); c2 <- MASS::mvrnorm(1, cf_hat[[2]], V[[2]])
+  if (raiz_max(c1, c2, p) < 1) return(list(c1, c2))
+}
+
+grupos <- traj |> group_by(regime, corte, sim) |> arrange(trimestre, .by_group = TRUE) |>
+  group_split()
+zs <- lapply(grupos, function(g) {
+  xdev <- as.matrix(g[, xs])
+  if (g$sim[1] == 0) { cf <- cf_hat; eps <- NULL } else {
+    cf <- sorteia(); eps <- res[sample(nrow(res), nrow(g), replace = TRUE), , drop = FALSE] }
+  f <- para_fatias(simula_ardl(xdev, cf[[1]], cf[[2]], p, eps), y0, total3)
+  g |> mutate(part_d_LFT = f[, "LFT"], part_d_PRE = f[, "PRE"], part_d_IPCA = f[, "IPCA"])
+}) |> bind_rows()
 
 # ---- B e C. Perfil título a título (a preço de mercado) -------------------
 perfil <- read_csv2("perfil_titulos_ultimo_mes.csv", show_col_types = FALSE) |>
@@ -199,8 +230,8 @@ leque <- function(df, titulo, sub, ylab, arq, rotulos, alt = 6) {
 }
 
 leque(traj_res |> filter(grepl("^part_", variavel)),
-      "Canetada e composição da dívida: o que a regressão histórica prevê",
-      "Mudança acumulada da participação (p.p.), 1.000 simulações. A regressão é a mesma nos dois regimes: a diferença vem do modelo.",
+      "Canetada e composição da dívida: o que a dinâmica histórica prevê",
+      "Mudança da participação (p.p.), ARDL com sorteio de parâmetros e resíduos sobre 1.000 simulações do modelo",
       NULL, "26_composicao_estocastica.png",
       c(part_d_LFT = "LFT (Selic)", part_d_PRE = "Prefixados", part_d_IPCA = "IPCA"), alt = 7.5)
 leque(traj_res |> filter(variavel %in% c("custo_acum", "lft_acum")),

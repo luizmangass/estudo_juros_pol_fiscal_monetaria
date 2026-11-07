@@ -27,7 +27,7 @@ alvo   = {[0.39 0.37], [1.37 1.24]};
 grade  = 0:0.05:4;
 saida  = {};  calib = {};  irfs = {};
 % Trajetórias individuais (para o modelo satélite da dívida em R)
-vars_sim = {'i','il','pi','rp','s','b'};
+vars_sim = {'i','il','pi','rp','s','b','tp','y','cambio_nominal'};
 fsim = fopen('simulacoes_modelo_estimado.csv', 'w');
 fprintf(fsim, 'regime,corte,sim,trimestre,%s\n', strjoin(vars_sim, ','));
 

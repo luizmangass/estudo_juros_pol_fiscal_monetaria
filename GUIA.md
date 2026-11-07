@@ -66,11 +66,13 @@ teste_bohn.R
 teste_blanchard.R
 surpresas_copom.R ──> risco_pais_emendado.csv ─┬─> robustez_surpresas_5d.R
                                                ├─> ancora_fiscal.R
-                                               └─> composicao_divida.R ──> regressao_composicao.csv ─┐
+                                               └─> composicao_divida.R ──> base_composicao_mensal.csv
+                                                                          └─> composicao_ardl.R ─────┐
 duration_divida.R ──> perfil_titulos_ultimo_mes.csv, composicao_mercado_mensal.csv ─────────────────┤
 estimar_modelo.R ──> parametros_estimados.csv ──> [Dynare] ──> simulacoes_modelo_estimado.csv ───────┤
                                                                                                     v
                                                                           reacao_mercado_estocastica.R
+estimar_modelo.R ──> base_modelo_trimestral.csv ──> bvar_canetada.R (usa também o ARDL e as simulações)
 ```
 
 ---
@@ -258,51 +260,131 @@ resposta do anterior.
 - Os gráficos 07 e 08 são a primeira versão do modelo, calibrada à mão. Ficam
   só para registro.
 
-### Passo 10. Reação estocástica do mercado e da dívida
+### Passo 10. A composição como série temporal (ARDL)
+
+- **Script:** `composicao_ardl.R`
+- **Por que existe:** a regressão do passo 7 é estática (sem a fatia defasada),
+  não tem câmbio e cada indexador é estimado separado. Para simular trajetórias,
+  é preciso um modelo de série temporal.
+- **O modelo:** ARDL trimestral (2009-2026, 70 trimestres) em razões
+  logarítmicas, y1 = log(LFT/pré) e y2 = log(IPCA/pré), em forma de correção.
+  Os regressores são:
+  - a fatia defasada em nível;
+  - 2 defasagens das variações;
+  - risco, juro real, desancoragem, primário estrutural, inclinação e
+    depreciação do câmbio em 4 trimestres, todos defasados 1 trimestre.
+
+  A razão logarítmica garante que as três fatias somem o total e fiquem entre 0
+  e 1, sem precisar impor isso depois.
+- **Escolhas e testes:**
+  - É trimestral porque, no mensal, os vencimentos concentrados (LTN em
+    jan/abr/jul/out, NTN-B em mai/ago) deixam os resíduos muito autocorrelacionados.
+  - p = 2 é o menor número de defasagens com resíduo branco nas duas equações
+    (Ljung-Box com 8 defasagens: p = 0,21 e 0,56; ver `ardl_selecao.csv`).
+  - A maior raiz é 0,994: o sistema é estável, mas um choque na composição dura
+    anos. Os erros são Newey-West.
+- **Saídas:**
+  - `29_ardl_multiplicadores.png` e `ardl_multiplicadores.csv`: mudança das fatias quando cada variável sobe 1 desvio-padrão por 4 trimestres.
+  - `ardl_coeficientes.csv`, `ardl_vcov.csv`, `ardl_residuos.csv` e `ardl_ponto_partida.csv`: insumos da simulação.
+- **Números (8 trimestres depois de 1 dp por 4 trimestres, p.p.):**
+
+| Variável que sobe | LFT | Prefixados | IPCA |
+| --- | --- | --- | --- |
+| Primário estrutural (+1,4 p.p. do PIB) | **−4,1** | +2,5 | +1,6 |
+| Juro real (+3,0 p.p.) | +3,1 | −1,6 | −1,6 |
+| Inclinação (+1,9 p.p.) | +1,8 | −1,0 | −0,8 |
+| Risco (+67 pb) | +1,2 | −0,7 | −0,5 |
+| Desancoragem (+0,86 p.p.) | +0,4 | −0,8 | +0,4 |
+| Depreciação do câmbio (+16% em 4 trimestres) | −0,7 | +0,5 | +0,2 |
+
+  Os sinais são os da regressão estática, e o primário estrutural continua sendo
+  o que mais pesa (p < 0,001 na equação da LFT). O câmbio entra com sinal pequeno
+  e não significativo (p = 0,35).
+
+### Passo 11. Reação estocástica do mercado e da dívida
 
 - **Script:** `reacao_mercado_estocastica.R`
-- **O que faz:** pega cada uma das 1.000 trajetórias do modelo e aplica três peças:
-  1. Os coeficientes do passo 7, para obter o caminho da composição.
-  2. A duration título a título do passo 8, para obter a marcação a mercado.
-  3. O perfil de vencimentos, para obter o custo extra de juros. A LFT
-     reprecifica na hora; prefixados e IPCA só quando vencem e são rolados à
-     taxa nova.
+- **O que faz:** pega as 1.000 trajetórias do modelo e aplica três peças:
+  1. **Composição:** o ARDL do passo 10, com duas fontes de incerteza a mais.
+     Em cada simulação, os coeficientes são sorteados da distribuição estimada
+     (descartando sorteios instáveis), e soma-se um resíduo histórico sorteado
+     aos pares, porque as duas equações têm resíduos com correlação de 0,81.
+  2. **Marcação a mercado:** a duration título a título do passo 8.
+  3. **Custo extra de juros:** o perfil de vencimentos. A LFT reprecifica na
+     hora; prefixados e IPCA só quando são rolados.
+- **Como as variáveis do modelo viram regressores:**
+  - risco = rp × 100;
+  - juro real = Selic − inflação média esperada nos 4 trimestres seguintes;
+  - desancoragem = essa inflação esperada;
+  - primário = 4 × s;
+  - inclinação = juro longo − Selic;
+  - câmbio = variação do câmbio nominal em 4 trimestres.
 - **Saídas:**
-  - `26_composicao_estocastica.png`: caminho da participação de LFT, prefixados e IPCA.
-  - `27_custo_tesouro_estocastico.png`: custo extra acumulado em R$ bi.
-  - `28_marcacao_estocastica.png`: distribuição do ganho ou da perda de marcação em 1 e 2 anos.
-  - `reacao_mercado_resumo.csv`: percentis 5, 50 e 95 e a probabilidade de o valor ser positivo.
-  - `reacao_mercado_trajetorias.csv`: bandas trimestre a trimestre.
-- **Números, canetada de 1 p.p. (mediana; entre parênteses, a faixa de 90%):**
+  - `26_composicao_estocastica.png`: as fatias de LFT, prefixados e IPCA.
+  - `27_custo_tesouro_estocastico.png`: o custo extra acumulado.
+  - `28_marcacao_estocastica.png`: o ganho ou a perda de marcação em 1 e 2 anos.
+  - `reacao_mercado_resumo.csv` e `reacao_mercado_trajetorias.csv`.
+- **Números, canetada de 1 p.p., regime pós-2014** (central; entre parênteses, a
+  faixa de 90%):
 
-| | Pré-2014 | Pós-2014 |
+| | 2 anos | 6 anos |
 | --- | --- | --- |
-| Fatia de LFT em 2 anos | +3,8 p.p. (−1,6 a +9,3) | +3,2 p.p. (−2,9 a +9,0) |
-| Fatia de prefixados em 2 anos | −3,5 p.p. | −2,6 p.p. |
-| Fatia de LFT em 6 anos | +11 p.p. | +10 p.p. |
-| Custo extra acumulado em 2 anos | −R$ 28 bi | −R$ 20 bi (−74 a +32) |
-| Custo extra acumulado em 6 anos | +R$ 7 bi | +R$ 1 bi (−162 a +156) |
-| Só a LFT, pico do custo extra (trimestre 12) | perto de zero | cerca de +R$ 20 bi |
+| Fatia de LFT | −5,6 p.p. (−21 a +10) | +3,2 p.p. (−21 a +20) |
+| Fatia de IPCA | +6,3 p.p. (−4 a +18) | −1,0 p.p. |
+| Fatia de prefixados | −0,7 p.p. | −2,2 p.p. |
+| Custo extra acumulado | −R$ 20 bi (−74 a +32) | +R$ 1 bi (−162 a +156) |
 
 - **Como ler:**
-  - A canetada economiza cerca de R$ 50 bi no primeiro ano, porque a LFT fica mais
-    barata.
-  - A correção da Selic que vem depois devolve essa economia. No regime pós-2014,
-    a conta da LFT passa a ser positiva a partir do terceiro ano: economia agora,
-    conta depois.
-  - A composição piora nos dois regimes: o Tesouro sai do prefixado e volta para a
-    LFT, e a dívida fica ainda mais sensível à Selic.
-- **Duas ressalvas que precisam ir para o texto:**
-  1. O modelo é linear. O efeito da canetada é a linha central; as bandas são a
-     incerteza macro em volta dela, não incerteza sobre a canetada.
-  2. O canal de risco foi calibrado com surpresas de alta, e o modelo linear
-     responde de forma simétrica. Por isso ele prevê que uma canetada derruba o
-     risco e o juro longo real, e daí vem o ganho de marcação do gráfico 28 no
-     primeiro ano. O ciclo de 2023 (passo 7) mostra o contrário: corte sem âncora
-     fiscal fez o juro longo subir. Essa diferença é um achado, não um erro: o
-     mercado reage de forma assimétrica, e corte sem fiscal é punido. Para o
-     artigo, o modelo é o limite otimista; 2011 e 2023 mostram o que acontece de
-     fato.
+  - **O custo é robusto:** a canetada economiza cerca de R$ 50 bi no primeiro ano,
+    pela LFT. A correção da Selic devolve essa economia em uns 3 anos. No pós-2014,
+    a conta da LFT fica positiva a partir do terceiro ano.
+  - **A composição não é robusta:** a faixa de 90% vai de −21 a +10 p.p. e o
+    sinal da LFT muda conforme a especificação. A regressão estática dizia +3 p.p.
+    em 2 anos; o ARDL diz −5,6. O passo 12 mostra por quê: o resultado depende de
+    quanto o risco e a inflação reagem à canetada, e o modelo exagera os dois.
+    Eu não usaria um número de composição no texto.
+
+### Passo 12. Contraprova: a mesma canetada num VAR bayesiano
+
+- **Script:** `bvar_canetada.R`
+- **Por que existe:** o modelo do Dynare impõe estrutura e calibra a Phillips, a
+  IS e o câmbio. O VAR pergunta o que os dados dizem sem essa estrutura.
+- **O modelo:**
+  - VAR(2) trimestral em nível, 2010-2026 (66 trimestres), com primário
+    estrutural, hiato, IPCA 12m, Selic, câmbio, risco e pré 5 anos.
+  - Prior de Minnesota (passeio aleatório, aperto 0,2) e 1.000 sorteios da
+    posterior.
+  - Identificação recursiva: fiscal, atividade e inflação não reagem à Selic
+    no mesmo trimestre; câmbio, risco e juro longo reagem.
+  - A canetada é a sequência de choques que deixa a Selic 1 p.p. abaixo da base
+    por 4 trimestres (previsão condicional).
+- **Saídas:**
+  - `30_bvar_vs_dynare.png` e `bvar_vs_dynare.csv`: as duas respostas lado a lado.
+  - `bvar_canetada.csv`.
+  - `bvar_composicao.csv`: o ARDL alimentado pela macro do VAR.
+- **Números (média dos trimestres 5 a 8, canetada de 1 p.p.):**
+
+| | Dynare pós-2014 | VAR |
+| --- | --- | --- |
+| IPCA 12m | +2,4 p.p. | +0,55 p.p. |
+| Selic (correção) | +0,7 p.p. | −0,4 p.p. |
+| Risco-país | −181 pb | +6 pb |
+| Câmbio | +1,4% | +1,0% |
+| Juro longo prefixado | −0,1 p.p. | 0,0 p.p. |
+
+  Com a macro do VAR, a fatia de LFT cai 1,1 p.p. em 2 anos (faixa de 80%: −1,5
+  a −0,7) e a de IPCA sobe 1,5.
+- **Como ler:**
+  - **Inflação:** os dois concordam no sinal (ela sobe e o câmbio deprecia), mas
+    o modelo põe cerca de 4 vezes mais inflação que o VAR.
+  - **Risco:** no modelo ele cai quase 200 pb. É o canal das surpresas (passo 5)
+    aplicado ao contrário, de forma simétrica. No VAR, o risco não se mexe.
+  - **Conclusão para o texto:** o modelo serve para mostrar o mecanismo e a
+    diferença entre os regimes, não para dar o tamanho. O VAR diz que, nos dados
+    médios de 2010 a 2026, um corte de 1 p.p. é "barato" no curto prazo. A conta
+    aparece em outro lugar: na inflação que fica e na Selic que precisa voltar.
+- **Limite:** o VAR também é linear e não separa uma canetada da reação normal do
+  BC (crítica de Lucas). É uma contraprova, não um substituto.
 
 ---
 
@@ -329,6 +411,12 @@ resposta do anterior.
 | base_modelo_trimestral.csv | trimestre | séries usadas na estimação |
 | reacao_mercado_resumo.csv | regime × corte × medida | p05, p50, p95, prob_positivo |
 | reacao_mercado_trajetorias.csv | regime × corte × trimestre × variável | central e percentis |
+| ardl_selecao.csv | defasagens × equação | BIC, R², Ljung-Box |
+| ardl_coeficientes.csv | equação × termo | coef, ep, p, r2, ljung_box_p |
+| ardl_multiplicadores.csv | variável × trimestre | mudança das fatias de LFT, PRE e IPCA |
+| bvar_canetada.csv | variável × trimestre | central, p10, p50, p90 |
+| bvar_vs_dynare.csv | fonte × variável × trimestre | central, p10, p90 |
+| bvar_composicao.csv | indexador × trimestre | central, p10, p90 |
 
 ---
 
@@ -353,7 +441,7 @@ Uma estrutura possível, com o gráfico e o número que sustentam cada parte.
 6. **Três cortes, três finais.** Tombini, Ilan e Campos Neto. *Gráfico 22 e a
    tabela do passo 7.*
 7. **E se viesse uma canetada?** O modelo, os dois regimes e a reação estocástica.
-   *Gráficos 18, 26 e 27. Números do passo 9 e do passo 10.*
+   *Gráficos 18, 27 e 30. Números dos passos 9, 11 e 12. Deixe a composição de fora: não é robusta.*
 8. **Onde estamos desde 2023.** O regime "refém", não a dominância plena. O que
    tiraria o país daqui: primário estrutural. Esse é o coeficiente que mais pesa
    na regressão da composição (−2,9 na LFT).
@@ -375,7 +463,7 @@ número de cada tuíte.
 | 7 | 2023: a Selic caiu e o juro longo subiu | 22 | pré 5a +1,5 p.p. |
 | 8 | Fiscal melhor tira o Tesouro da LFT | 21 | −2,9 p.p./ano por 1 dp |
 | 9 | Canetada: economia agora, conta depois | 27 | −R$ 50 bi no ano 1; devolvido em 3 anos |
-| 10 | E a dívida fica ainda mais curta | 26 | LFT +3 p.p. em 2 anos |
+| 10 | O corte volta como inflação | 30 | IPCA +0,5 (VAR) a +2,4 p.p. (modelo) |
 | 11 | Estamos em regime "refém", não em dominância plena | 16 | postura +2,1; desancoragem 1,5 |
 | 12 | Dados e códigos abertos | link do repositório | |
 
@@ -391,9 +479,12 @@ número de cada tuíte.
   não estimadas, porque as regressões deram sinal trocado por simultaneidade.
 - **Simetria:** o modelo é linear, então trata corte e alta de forma simétrica, e
   os dados de 2011 e 2023 sugerem que não é assim (ver passo 10).
-- **Regressão da composição:** é uma só para todo o período e não separa regimes.
-  Os resultados de 6 anos são extrapolação, e a soma zero entre os três
-  indexadores é imposta.
+- **Composição:** o ARDL é um só para todo o período e não separa regimes. A
+  resposta a uma canetada muda de sinal conforme a macro que o alimenta (passos
+  11 e 12), por isso fica como exercício, não como resultado.
+- **Tamanho da resposta macro:** o modelo põe cerca de 4 vezes mais inflação que o
+  VAR e uma queda de risco que o VAR não vê. Use o modelo para o mecanismo e o VAR
+  para a ordem de grandeza.
 - **Marcação a mercado:** usa a curva do Tesouro Direto (taxa média de compra e
   venda), não a da ANBIMA. Educa+ e Renda+ (NTN-B1) ficam no valor contábil.
 

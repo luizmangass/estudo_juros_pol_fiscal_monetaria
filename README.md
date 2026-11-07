@@ -10,7 +10,7 @@ por que a política monetária é refém, ou passageira, da política fiscal".
 **Passo a passo completo, com o significado de cada gráfico e base, a sequência lógica do estudo e um roteiro para artigo e fio: [GUIA.md](GUIA.md).**
 
 1. Instale os pacotes (lista no topo de `00_rodar_tudo.R`).
-2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 12 scripts em ordem,
+2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 14 scripts em ordem,
    joga os gráficos em `graficos/` e as bases geradas em `resultados/`.
 3. Para ver a transformação passo a passo, abra um script de `scripts/`, faça
    `setwd(".../estudo_juros_pol_fiscal_monetaria/dados")` e rode bloco a bloco (os `View()` mostram cada etapa).
@@ -77,7 +77,9 @@ Não entram nos scripts: `dotacao-orcamentaria-e-credito-empenhado-da-dpf-por-fo
 | ancora_fiscal.R | Postura monetária, impulso fiscal estrutural e desancoragem | 16 |
 | composicao_divida.R | O que move LFT, prefixados e IPCA; ciclos de corte Tombini, Ilan e Campos Neto | 21, 22 |
 | duration_divida.R | Composição e duration a preço de mercado, convexidade, DV01 e perda de marcação num choque de curva | 23 a 25 |
-| reacao_mercado_estocastica.R | Liga as 1.000 simulações do modelo à regressão da composição, à duration e ao perfil de vencimentos: composição, marcação e custo extra para o Tesouro numa canetada | 26 a 28 |
+| composicao_ardl.R | Composição como série temporal: ARDL(2) trimestral em log(LFT/pré) e log(IPCA/pré), com câmbio; multiplicadores dinâmicos | 29 |
+| reacao_mercado_estocastica.R | Liga as 1.000 simulações do modelo ao ARDL da composição (com sorteio de parâmetros e resíduos), à duration e ao perfil de vencimentos: composição, marcação e custo extra para o Tesouro numa canetada | 26 a 28 |
+| bvar_canetada.R | Contraprova: a mesma canetada num VAR bayesiano (Minnesota, Cholesky) e a composição com essa macro | 30 |
 | estimar_modelo.R | Estima as equações do modelo pré e pós-2014 | resultados/parametros_estimados.csv |
 | modelo/ (estimado) | Modelo com parâmetros estimados e risco calibrado pelas surpresas | 17 a 19 |
 | modelo/ (ilustrativo) | Primeira versão, calibrada à mão | 07, 08 |
