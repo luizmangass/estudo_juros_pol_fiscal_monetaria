@@ -26,6 +26,7 @@ scripts <- c(
   "surpresas_copom.R",         # surpresas do Copom, risco-país emendado, Blanchard identificado
   "robustez_surpresas_5d.R",   # mesmo teste com Focus de 5 dias úteis (2021+)
   "ancora_fiscal.R",           # postura monetária x impulso fiscal x desancoragem
+  "composicao_divida.R",       # o que move LFT/prefixados; ciclos de corte Tombini, Ilan, Campos Neto
   "estimar_modelo.R"           # estima as equações do modelo (pré e pós-2014)
 )
 
@@ -44,7 +45,8 @@ gerados <- c("composicao_indexador.csv", "estoque_dpf_longo.csv",
              "surpresas_copom.csv", "risco_pais_emendado.csv",
              "ancora_por_periodo.csv", "ancora_base_trimestral.csv",
              "parametros_estimados.csv", "base_modelo_trimestral.csv",
-             "juro_neutro_5a5a.csv", "surpresas_5d_vs_30d.csv", "robustez_5d_lp.csv")
+             "juro_neutro_5a5a.csv", "surpresas_5d_vs_30d.csv", "robustez_5d_lp.csv",
+             "regressao_composicao.csv", "evento_ciclos_corte.csv", "base_composicao_mensal.csv")
 for (f in intersect(gerados, list.files()))
   file.copy(f, file.path(raiz, "resultados", f), overwrite = TRUE)
 if (file.exists("Rplots.pdf")) file.remove("Rplots.pdf")

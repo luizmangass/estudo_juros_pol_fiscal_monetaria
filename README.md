@@ -8,7 +8,7 @@ por que a política monetária é refém, ou passageira, da política fiscal".
 ## Como rodar
 
 1. Instale os pacotes (lista no topo de `00_rodar_tudo.R`).
-2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 9 scripts em ordem,
+2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 10 scripts em ordem,
    joga os gráficos em `graficos/` e as bases geradas em `resultados/`.
 3. Para ver a transformação passo a passo, abra um script de `scripts/`, faça
    `setwd(".../estudo_juros_pol_fiscal_monetaria/dados")` e rode bloco a bloco (os `View()` mostram cada etapa).
@@ -26,7 +26,7 @@ emendado que `ancora_fiscal.R` usa.
 | --- | --- | --- | --- |
 | estoque-da-divida-publica-federal.xlsx | Estoque da DPF por título, RMD Anexo 2.1 | Tesouro Nacional | divida_publica.R |
 | fatores-de-variacao-da-divida-publica-federal.xlsx | Fatores de variação da DPF, RMD Anexo 2.9 | Tesouro Nacional | divida_publica.R, custo_primario_nominal.R |
-| precotaxatesourodireto.csv | Taxas e preços diários do Tesouro Direto (inclui o juro neutro de mercado, forward 5a5a das NTN-B) | Tesouro Transparente | lft_regressao.R, ancora_fiscal.R, estimar_modelo.R |
+| precotaxatesourodireto.csv | Taxas e preços diários do Tesouro Direto (inclui o juro neutro de mercado, forward 5a5a das NTN-B) | Tesouro Transparente | lft_regressao.R, ancora_fiscal.R, estimar_modelo.R, composicao_divida.R |
 | receita-orcamentaria-da-uniao.csv | Receita orçamentária da União (linha de refinanciamento) | Tesouro Transparente | custo_primario_nominal.R |
 | bcdata.sgs.5793.csv | NFSP primário, % PIB, 12 meses | BCB, SGS | custo_primario_nominal.R, teste_bohn.R |
 | bcdata.sgs.5727.csv | NFSP nominal, % PIB, 12 meses | BCB, SGS | custo_primario_nominal.R |
@@ -72,6 +72,7 @@ Não entram nos scripts: `dotacao-orcamentaria-e-credito-empenhado-da-dpf-por-fo
 | surpresas_copom.R | Surpresas do Copom, risco-país EMBI+CDS, teste identificado | 13 a 15 |
 | robustez_surpresas_5d.R | Refaz o teste com a mediana Focus de 5 dias úteis | 20 |
 | ancora_fiscal.R | Postura monetária, impulso fiscal estrutural e desancoragem | 16 |
+| composicao_divida.R | O que move LFT, prefixados e IPCA; ciclos de corte Tombini, Ilan e Campos Neto | 21, 22 |
 | estimar_modelo.R | Estima as equações do modelo pré e pós-2014 | resultados/parametros_estimados.csv |
 | modelo/ (estimado) | Modelo com parâmetros estimados e risco calibrado pelas surpresas | 17 a 19 |
 | modelo/ (ilustrativo) | Primeira versão, calibrada à mão | 07, 08 |
