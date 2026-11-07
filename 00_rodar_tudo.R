@@ -27,6 +27,7 @@ scripts <- c(
   "robustez_surpresas_5d.R",   # mesmo teste com Focus de 5 dias úteis (2021+)
   "ancora_fiscal.R",           # postura monetária x impulso fiscal x desancoragem
   "composicao_divida.R",       # o que move LFT/prefixados; ciclos de corte Tombini, Ilan, Campos Neto
+  "duration_divida.R",         # duration, convexidade e DV01 da dívida, título a título
   "estimar_modelo.R"           # estima as equações do modelo (pré e pós-2014)
 )
 
@@ -46,7 +47,8 @@ gerados <- c("composicao_indexador.csv", "estoque_dpf_longo.csv",
              "ancora_por_periodo.csv", "ancora_base_trimestral.csv",
              "parametros_estimados.csv", "base_modelo_trimestral.csv",
              "juro_neutro_5a5a.csv", "surpresas_5d_vs_30d.csv", "robustez_5d_lp.csv",
-             "regressao_composicao.csv", "evento_ciclos_corte.csv", "base_composicao_mensal.csv")
+             "regressao_composicao.csv", "evento_ciclos_corte.csv", "base_composicao_mensal.csv",
+             "duration_mensal.csv", "duration_por_titulo_ultimo_mes.csv", "choque_curva_marcacao.csv")
 for (f in intersect(gerados, list.files()))
   file.copy(f, file.path(raiz, "resultados", f), overwrite = TRUE)
 if (file.exists("Rplots.pdf")) file.remove("Rplots.pdf")
