@@ -8,7 +8,7 @@ por que a política monetária é refém, ou passageira, da política fiscal".
 ## Como rodar
 
 1. Instale os pacotes (lista no topo de `00_rodar_tudo.R`).
-2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 8 scripts em ordem,
+2. Abra `00_rodar_tudo.R` no RStudio e rode tudo. Ele roda os 9 scripts em ordem,
    joga os gráficos em `graficos/` e as bases geradas em `resultados/`.
 3. Para ver a transformação passo a passo, abra um script de `scripts/`, faça
    `setwd(".../estudo_juros_pol_fiscal_monetaria/dados")` e rode bloco a bloco (os `View()` mostram cada etapa).
@@ -40,7 +40,8 @@ emendado que `ancora_fiscal.R` usa.
 | bcdata.sgs.13522.csv | IPCA acumulado em 12 meses | BCB, SGS | teste_blanchard.R |
 | embi.csv | EMBI+ Risco-Brasil, diário, até jul/2024 | Ipeadata / JP Morgan | teste_blanchard.R, surpresas_copom.R |
 | cds.csv | CDS Brasil 5 anos USD, mensal | Investing.com | surpresas_copom.R |
-| focus_selic_2008_2017.xls e _2017_2026.xls | Selic esperada por reunião do Copom, mediana | BCB, Focus | surpresas_copom.R |
+| focus_selic_2008_2017.xls e _2017_2026.xls | Selic esperada por reunião do Copom, mediana, base 30 dias | BCB, Focus | surpresas_copom.R |
+| focus_selic_5d_2021_2026.xls | Selic esperada por reunião, mediana, base 5 dias úteis (existe só desde mar/2021) | BCB, Focus | robustez_surpresas_5d.R |
 | focus_ipca_2009_2017.xls e _2017_2026.xls | IPCA mensal esperado, mediana | BCB, Focus | ancora_fiscal.R |
 | resultado-fiscal-estrutural.xlsx | Resultado primário estrutural | SPE / Ministério da Fazenda | ancora_fiscal.R |
 | estimativas-do-hiato-do-produto-ifi.xlsx | Hiato do produto | IFI / Senado | ancora_fiscal.R |
@@ -48,7 +49,7 @@ emendado que `ancora_fiscal.R` usa.
 
 Nomes trocados em relação ao download original: `embi.csv` (ipeadata[07-11-2026-03-56].csv),
 `cds.csv` (Brasil CDS 5 Anos USD - Visão Geral.csv), `focus_*` (Série de estatísticas.xls e (1) a (3)),
-`bcdata.sgs.432_*` (bcdata.sgs.432 (2) e (3)).
+`bcdata.sgs.432_*` (bcdata.sgs.432 (2) e (3)), `focus_selic_5d_2021_2026.xls` (Série de estatísticas (6).xls).
 
 ## Bases consultadas e não usadas
 
@@ -68,6 +69,7 @@ Não entram nos scripts: `dotacao-orcamentaria-e-credito-empenhado-da-dpf-por-fo
 | teste_bohn.R | Reação do primário à dívida, quebra e janelas móveis | 09, 10 |
 | teste_blanchard.R | Versão ingênua com a variação da Selic (só comparação) | 11, 12 |
 | surpresas_copom.R | Surpresas do Copom, risco-país EMBI+CDS, teste identificado | 13 a 15 |
+| robustez_surpresas_5d.R | Refaz o teste com a mediana Focus de 5 dias úteis | 20 |
 | ancora_fiscal.R | Postura monetária, impulso fiscal estrutural e desancoragem | 16 |
 | estimar_modelo.R | Estima as equações do modelo pré e pós-2014 | resultados/parametros_estimados.csv |
 | modelo/ (estimado) | Modelo com parâmetros estimados e risco calibrado pelas surpresas | 17 a 19 |
